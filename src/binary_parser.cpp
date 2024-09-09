@@ -87,6 +87,12 @@ namespace rbf_gnss_ins_driver {
 
     void BinaryParser::parse(const uint8_t* buffer, uint16_t size) {
         for (uint16_t i = 0; i < size; i++) {
+
+            if(data_index_ >= sizeof(raw_data_)){
+                data_index_ = 0;
+                status_ = ParseStatus::SYNCH1_CONTROL;
+                continue;
+            }
             switch (status_) {
                 case ParseStatus::SYNCH1_CONTROL: {
                     if (first_synch == buffer[i]) {
@@ -123,7 +129,13 @@ namespace rbf_gnss_ins_driver {
                 case ParseStatus::HEADER_LENGTH: {
                     raw_data_[data_index_++] = buffer[i];
                     header_.header_length = buffer[i];
-                    status_ = ParseStatus::HEADER_ADD;
+                    if(header_.header_length == 28){
+                        status_ = ParseStatus::HEADER_ADD;
+                    }
+                    else{
+                        data_index_ = 0;
+                        status_ = ParseStatus::SYNCH1_CONTROL;
+                    }
                     break;
                 }
 
@@ -137,6 +149,11 @@ namespace rbf_gnss_ins_driver {
                 }
 
                 case ParseStatus::DATA_ADD: {
+                    if(header_.msg_len > 128){
+                        data_index_ = 0;
+                        status_ = ParseStatus::SYNCH1_CONTROL;
+                        break;
+                    }
                     raw_data_[data_index_++] = buffer[i];
                     if (data_index_ >= header_.msg_len + header_.header_length + crc_len) {
                         uint32_t crc;
