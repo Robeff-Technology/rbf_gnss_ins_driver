@@ -3,26 +3,28 @@
 
 #include <stdexcept>
 
-class SerialPortException : public std::runtime_error {
+class SerialPortException : public std::runtime_error
+{
 public:
-    SerialPortException(const std::string& message);
+    SerialPortException(const std::string &message);
 };
 
-class SerialPort {
+class SerialPort
+{
 public:
     SerialPort();
-    SerialPort(const char* port_name);
+    SerialPort(const char *port_name);
     ~SerialPort();
 
     void open();
     void configure(unsigned int baud_rate, int data_bits = 8, char parity = 'N', int stop_bits = 1);
-    void write(const char* data, int length);
-    int read(char* buffer, int buffer_size);
+    void write(const char *data, int length);
+    int read(char *buffer, int buffer_size);
     void close();
-    void set_port_name(const char* port_name);
+    void set_port_name(const char *port_name);
 
 private:
-    const char* port_name_;
+    const char *port_name_;
     int fd_;
     bool is_open_();
     bool is_configured_;
@@ -31,8 +33,7 @@ private:
     char parity_;
     int stop_bits_;
     int buffer_size_;
-    char* buffer_;    
+    char *buffer_;
 };
 
 #endif // SERIAL_PORT_H
-

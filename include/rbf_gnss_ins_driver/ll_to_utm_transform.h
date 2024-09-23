@@ -5,23 +5,28 @@
 #ifndef LL_TO_UTM_TRANSFORM_H
 #define LL_TO_UTM_TRANSFORM_H
 
-namespace rbf_gnss_ins_driver{
+namespace rbf_gnss_ins_driver
+{
 
-    class LlToUtmTransform {
+    class LlToUtmTransform
+    {
     private:
-        struct Origin{
+        struct Origin
+        {
             int zone;
             double northing;
             double easting;
             double altitude;
         };
+
     public:
-        LlToUtmTransform(double lat, double lon, double altitude) {
+        LlToUtmTransform(double lat, double lon, double altitude)
+        {
             initUTM(lat, lon, altitude);
         };
         LlToUtmTransform() = delete;
         ~LlToUtmTransform() = default;
-        void transform(double lat, double lon, double altitude, double& x, double& y, double& z) const;
+        void transform(double lat, double lon, double altitude, double &x, double &y, double &z) const;
 
         void initUTM(double Lat, double Long, double altitude);
 

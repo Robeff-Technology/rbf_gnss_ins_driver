@@ -4,8 +4,9 @@
 
 #include <cstdint>
 
-namespace rbf_gnss_ins_driver {
-    #pragma pack(push, 1)
+namespace rbf_gnss_ins_driver
+{
+#pragma pack(push, 1)
     struct Header
     {
         uint8_t synch_1{};
@@ -26,7 +27,8 @@ namespace rbf_gnss_ins_driver {
         uint16_t receiver_sw_ver{};
     };
 
-    struct InsPvax {
+    struct InsPvax
+    {
         uint32_t ins_status{};
         uint32_t pos_type{};
         double latitude{};
@@ -52,9 +54,10 @@ namespace rbf_gnss_ins_driver {
         uint16_t time_since_update{};
     };
 
-    struct RawImu {
+    struct RawImu
+    {
         uint32_t gnss_week{};
-        double  seconds_into_week{};
+        double seconds_into_week{};
         uint32_t imu_status{};
         int32_t z_accel_output{};
         int32_t y_accel_output{};
@@ -64,7 +67,23 @@ namespace rbf_gnss_ins_driver {
         int32_t x_gyro_output{};
     };
 
-    struct BestGnssVel {
+    struct RawImux
+    {
+        uint8_t imu_error{};
+        uint8_t imu_type{};
+        uint16_t gnss_week{};
+        double seconds_into_week{};
+        uint32_t imu_status{};
+        int32_t z_accel_output{};
+        int32_t y_accel_output{};
+        int32_t x_accel_output{};
+        int32_t z_gyro_output{};
+        int32_t y_gyro_output{};
+        int32_t x_gyro_output{};
+    };
+
+    struct BestGnssVel
+    {
         uint32_t sol_status{};
         uint32_t vel_type{};
         float latency{};
@@ -75,7 +94,8 @@ namespace rbf_gnss_ins_driver {
         uint32_t reserved{};
     };
 
-    struct BestGnssPos {
+    struct BestGnssPos
+    {
         uint32_t sol_status{};
         uint32_t pos_type{};
         double latitude{};
@@ -99,7 +119,8 @@ namespace rbf_gnss_ins_driver {
         uint8_t gps_glonass_sig_mask{};
     };
 
-    struct UniHeading {
+    struct UniHeading
+    {
         uint32_t sol_status{};
         uint32_t pos_type{};
         float baseline_length{};
@@ -119,7 +140,8 @@ namespace rbf_gnss_ins_driver {
         uint8_t signal_mask_gps_glo_bds2{};
     };
 
-    struct ECEF{
+    struct ECEF
+    {
         uint32_t sol_status;
         uint32_t pos_type;
 
@@ -141,8 +163,7 @@ namespace rbf_gnss_ins_driver {
         float std_vel_x;
         float std_vel_y;
         float std_vel_z;
-
     };
-    #pragma pack(pop)
+#pragma pack(pop)
 }
-#endif //STRUCTS_H
+#endif // STRUCTS_H

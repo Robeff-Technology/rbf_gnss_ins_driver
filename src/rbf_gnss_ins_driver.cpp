@@ -1,36 +1,40 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rbf_gnss_ins_driver/rbf_gnss_ins_driver.h"
 
-
-namespace rbf_gnss_ins_driver {
-    GnssInsDriver::GnssInsDriver(const rclcpp::NodeOptions &options): Node("rbf_gnss_ins_driver", options){
+namespace rbf_gnss_ins_driver
+{
+    GnssInsDriver::GnssInsDriver(const rclcpp::NodeOptions &options) : Node("rbf_gnss_ins_driver", options)
+    {
         load_parameters();
         init_publishers();
-            try{
-                serial_port_ptr_ = std::make_shared<SerialPort>(config_params_.serial_.serial_port_.c_str());
-                serial_port_ptr_->open();
-                serial_port_ptr_->configure(config_params_.serial_.baudrate_, 8, 'N', 1);
-            }
-            catch (const SerialPortException& e){
-                RCLCPP_ERROR(get_logger(), e.what());
-                rclcpp::shutdown();
-            }
+        try
+        {
+            serial_port_ptr_ = std::make_shared<SerialPort>(config_params_.serial_.serial_port_.c_str());
+            serial_port_ptr_->open();
+            serial_port_ptr_->configure(config_params_.serial_.baudrate_, 8, 'N', 1);
+        }
+        catch (const SerialPortException &e)
+        {
+            RCLCPP_ERROR(get_logger(), e.what());
+            rclcpp::shutdown();
+        }
         diagnostic_updater_ = std::make_shared<diagnostic_updater::Updater>(this);
         diagnostic_updater_->setHardwareID("ROBINS_GNSS_INS");
         diagnostic_updater_->add("GNSS_INS_DRIVER", this, &GnssInsDriver::diagnostic_callback);
 
         converter_ = std::make_shared<Converter>(config_params_.use_ros_time_, static_cast<Converter::AltitudeMode>(config_params_.altitude_mode_));
         binary_parser_ = std::make_shared<BinaryParser>(std::bind(&GnssInsDriver::gnss_read_callback, this, std::placeholders::_1, std::placeholders::_2));
-        timer_ = this->create_wall_timer(std::chrono::milliseconds(1000/config_params_.working_frequency_), std::bind(&GnssInsDriver::timer_callback, this));
+        timer_ = this->create_wall_timer(std::chrono::milliseconds(1000 / config_params_.working_frequency_), std::bind(&GnssInsDriver::timer_callback, this));
         sub_rtcm_ = this->create_subscription<mavros_msgs::msg::RTCM>(config_params_.topics_.rtcm_topic_, 10, std::bind(&GnssInsDriver::rtcm_callback, this, std::placeholders::_1));
     }
 
-    void GnssInsDriver::load_parameters() {
+    void GnssInsDriver::load_parameters()
+    {
         config_params_.working_frequency_ = this->declare_parameter("working_frequency", 200);
 
         config_params_.serial_.serial_port_ = this->declare_parameter("serial_config.port", "/dev/ttyUSB0");
         config_params_.serial_.baudrate_ = this->declare_parameter("serial_config.baudrate", 460800);
-        
+
         config_params_.topics_.rtcm_topic_ = this->declare_parameter("topic_config.rtcm_topic", "rtcm");
         config_params_.topics_.imu_topic_ = this->declare_parameter("topic_config.imu_topic", "imu");
         config_params_.topics_.nav_sat_fix_topic_ = this->declare_parameter("topic_config.nav_sat_fix_topic", "nav_sat_fix");
@@ -39,13 +43,13 @@ namespace rbf_gnss_ins_driver {
 
         config_params_.frames_.gnss_frame_ = this->declare_parameter("frame_config.gnss_frame", "gnss");
         config_params_.frames_.imu_frame_ = this->declare_parameter("frame_config.imu_frame", "imu");
-   
+
         config_params_.use_ros_time_ = this->declare_parameter("time_config.use_ros_time", true);
-   
+
         config_params_.frames_.odometry_frame_ = this->declare_parameter("odometry_config.odometry_frame", "odometry");
         config_params_.topics_.odometry_topic_ = this->declare_parameter("odometry_config.odometry_topic", "odometry");
         config_params_.odometry_.use_odometry_ = this->declare_parameter("odometry_config.use_odometry", false);
-   
+
         config_params_.odometry_.lat_origin_ = this->declare_parameter("origin_config.latitude", 0.0);
         config_params_.odometry_.long_origin_ = this->declare_parameter("origin_config.longitude", 0.0);
         config_params_.odometry_.alt_origin_ = this->declare_parameter("origin_config.altitude", 0.0);
@@ -74,7 +78,8 @@ namespace rbf_gnss_ins_driver {
         RCLCPP_INFO(this->get_logger(), "----------------------------------------------------");
     }
 
-    void GnssInsDriver::init_publishers(){
+    void GnssInsDriver::init_publishers()
+    {
         /*CUSTOM MSGS PUBLISHERS*/
         pub_ins_ = this->create_publisher<rbf_gnss_ins_driver::msg::Ins>("/robins/raw/ins", 10);
         pub_heading_ = this->create_publisher<rbf_gnss_ins_driver::msg::Heading>("/robins/raw/heading", 10);
@@ -90,14 +95,14 @@ namespace rbf_gnss_ins_driver {
         pub_temperature_ = this->create_publisher<sensor_msgs::msg::Temperature>("/robins/raw/temperature", 10);
         pub_ecef_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>("/robins/raw/ecef_twist", 10);
 
-
         /*STANDARD MSGS PUBLISHERS*/
         pub_nav_sat_fix_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(config_params_.topics_.nav_sat_fix_topic_, 10);
         pub_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(config_params_.topics_.twist_topic_, 10);
         pub_imu_ = this->create_publisher<sensor_msgs::msg::Imu>(config_params_.topics_.imu_topic_, 10);
-        
+
         /*ODOM PUBLISHERS IF ENABLED*/
-        if(config_params_.odometry_.use_odometry_){
+        if (config_params_.odometry_.use_odometry_)
+        {
             pub_odometry_ = this->create_publisher<nav_msgs::msg::Odometry>(config_params_.topics_.odometry_topic_, 10);
             tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
             tf_static_broadcast_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
@@ -111,18 +116,21 @@ namespace rbf_gnss_ins_driver {
         }
     }
 
-    void GnssInsDriver::gnss_read_callback(const uint8_t* data, BinaryParser::MessageId id) {
+    void GnssInsDriver::gnss_read_callback(const uint8_t *data, BinaryParser::MessageId id)
+    {
         converter_->set_timestamp(binary_parser_->get_unix_time_ns());
-        if(BinaryParser::MessageId::kECEF == id){
-            ecef_ = *reinterpret_cast<const ECEF*>(data);
+        if (BinaryParser::MessageId::kECEF == id)
+        {
+            ecef_ = *reinterpret_cast<const ECEF *>(data);
             auto ecef_msg = converter_->ecef_to_msg(ecef_, config_params_.frames_.gnss_frame_);
             pub_ecef_->publish(ecef_msg);
-            
+
             auto ecef_twist_msg = converter_->ecef_to_twist_msg(ecef_, raw_imu_, config_params_.frames_.gnss_frame_);
             pub_ecef_twist_->publish(ecef_twist_msg);
         }
-        else if(BinaryParser::MessageId::kRAWIMU == id){
-            raw_imu_ = *reinterpret_cast<const RawImu*>(data);
+        else if (BinaryParser::MessageId::kRAWIMU == id)
+        {
+            raw_imu_ = *reinterpret_cast<const RawImu *>(data);
             auto imu_status_msg = converter_->raw_imu_to_imu_status(raw_imu_, config_params_.frames_.imu_frame_);
             pub_imu_status_->publish(imu_status_msg);
 
@@ -132,64 +140,84 @@ namespace rbf_gnss_ins_driver {
             auto temperature_msg = converter_->raw_imu_to_temperature_msg(raw_imu_, config_params_.frames_.imu_frame_);
             pub_temperature_->publish(temperature_msg);
         }
-        else if(BinaryParser::MessageId::kHEADING == id){
-            heading_ = *reinterpret_cast<const UniHeading*>(data);
+        else if (BinaryParser::MessageId::kRAWIMUX == id)
+        {
+            RCLCPP_INFO(this->get_logger(), "expected msg len is :%d", sizeof(RawImux));
+            RCLCPP_INFO(this->get_logger(), "received msg len is :%d", binary_parser_->header_.msg_len);
+            raw_imux_ = *reinterpret_cast<const RawImux *>(data);
+            auto imu_status_msg = converter_->raw_imu_to_imu_status(raw_imux_, config_params_.frames_.imu_frame_);
+            pub_imu_status_->publish(imu_status_msg);
+
+            auto imu_msg = converter_->raw_imu_to_imu_msg(raw_imux_, config_params_.frames_.imu_frame_);
+            pub_imu_raw_->publish(imu_msg);
+
+            auto temperature_msg = converter_->raw_imu_to_temperature_msg(raw_imux_, config_params_.frames_.imu_frame_);
+            pub_temperature_->publish(temperature_msg);
+        }
+        else if (BinaryParser::MessageId::kHEADING == id)
+        {
+            heading_ = *reinterpret_cast<const UniHeading *>(data);
             auto heading_msg = converter_->heading_to_msg(heading_, config_params_.frames_.gnss_frame_);
             pub_heading_->publish(heading_msg);
         }
-        else if(BinaryParser::MessageId::kGNSSPOS == id){
-            gnss_pos_ = *reinterpret_cast<const BestGnssPos*>(data);
+        else if (BinaryParser::MessageId::kGNSSPOS == id)
+        {
+            gnss_pos_ = *reinterpret_cast<const BestGnssPos *>(data);
             auto gnss_status_msg = converter_->gnss_pos_to_gnss_status_msg(gnss_pos_, config_params_.frames_.gnss_frame_);
             pub_gnss_status_->publish(gnss_status_msg);
 
             auto nav_sat_fix_msg = converter_->gnss_pos_to_nav_sat_fix_msg(gnss_pos_, config_params_.frames_.gnss_frame_);
             pub_nav_sat_fix_raw_->publish(nav_sat_fix_msg);
-            
         }
-        else if(BinaryParser::MessageId::kGNSSVEL == id){
-            gnss_vel_ = *reinterpret_cast<const BestGnssVel*>(data);
+        else if (BinaryParser::MessageId::kGNSSVEL == id)
+        {
+            gnss_vel_ = *reinterpret_cast<const BestGnssVel *>(data);
             auto gnss_vel_msg = converter_->gnss_vel_to_msg(gnss_vel_, config_params_.frames_.gnss_frame_);
             pub_gnss_vel_->publish(gnss_vel_msg);
-            
         }
-        else if(BinaryParser::MessageId::kINSPVAX == id){
-            ins_pva_ = *reinterpret_cast<const InsPvax*>(data);
+        else if (BinaryParser::MessageId::kINSPVAX == id)
+        {
+            ins_pva_ = *reinterpret_cast<const InsPvax *>(data);
             auto ins_msg = converter_->ins_to_msg(ins_pva_, config_params_.frames_.gnss_frame_);
             pub_ins_->publish(ins_msg);
 
-            if(Converter::is_ins_active(ins_pva_.ins_status)){
+            if (Converter::is_ins_active(ins_pva_.ins_status))
+            {
                 /*ODOM SECTION*/
-                if(config_params_.odometry_.use_odometry_){
+                if (config_params_.odometry_.use_odometry_)
+                {
                     double x, y, z;
                     ll_to_utm_transform_->transform(ins_pva_.latitude, ins_pva_.longitude, ins_pva_.height, x, y, z);
 
-                    auto odometry_msg = converter_->convert_to_odometry_msg(ins_pva_, raw_imu_, x, y, z, config_params_.frames_.odometry_frame_);
+                    auto odometry_msg = converter_->convert_to_odometry_msg(ins_pva_, raw_imux_, x, y, z, config_params_.frames_.odometry_frame_);
                     pub_odometry_->publish(odometry_msg);
 
                     auto transform = converter_->create_transform(odometry_msg.pose.pose, config_params_.frames_.odometry_frame_);
                     tf_broadcaster_->sendTransform(transform);
                 }
 
-
                 auto nav_sat_fix_msg = converter_->ins_to_nav_sat_fix_msg(ins_pva_, config_params_.frames_.gnss_frame_);
                 pub_nav_sat_fix_->publish(nav_sat_fix_msg);
 
-                auto imu_msg = converter_->ins_to_imu_msg(ins_pva_, raw_imu_, config_params_.frames_.imu_frame_);
+                auto imu_msg = converter_->ins_to_imu_msg(ins_pva_, raw_imux_, config_params_.frames_.imu_frame_);
                 pub_imu_->publish(imu_msg);
 
-                auto twist_msg = converter_->ins_to_twist_msg(ins_pva_, raw_imu_, config_params_.frames_.gnss_frame_);
+                auto twist_msg = converter_->ins_to_twist_msg(ins_pva_, raw_imux_, config_params_.frames_.gnss_frame_);
                 pub_twist_->publish(twist_msg);
             }
         }
     }
 
-    void GnssInsDriver::rtcm_callback(const mavros_msgs::msg::RTCM::SharedPtr msg) {
+    void GnssInsDriver::rtcm_callback(const mavros_msgs::msg::RTCM::SharedPtr msg)
+    {
         rtcm_status_.received_size_ += msg->data.size();
-        try{
-            serial_port_ptr_->write(reinterpret_cast<const char*>(msg->data.data()), msg->data.size());
+        try
+        {
+            serial_port_ptr_->write(reinterpret_cast<const char *>(msg->data.data()), msg->data.size());
             rtcm_status_.transmitted_size_ += msg->data.size();
         }
-        catch (const SerialPortException& e){
+        catch (const SerialPortException &e)
+        {
             RCLCPP_ERROR(get_logger(), e.what());
         }
 
@@ -200,25 +228,30 @@ namespace rbf_gnss_ins_driver {
         pub_rtcm_status_->publish(rtcm_status_msg);
     }
 
-    void GnssInsDriver::timer_callback() {
+    void GnssInsDriver::timer_callback()
+    {
         uint8_t buffer[512];
-        try{
-            int len = serial_port_ptr_->read(reinterpret_cast<char*>(buffer), sizeof(buffer));
-            if(len > 0){
+        try
+        {
+            int len = serial_port_ptr_->read(reinterpret_cast<char *>(buffer), sizeof(buffer));
+            if (len > 0)
+            {
                 binary_parser_->parse(buffer, len);
             }
         }
-        catch (const SerialPortException& e){
+        catch (const SerialPortException &e)
+        {
             RCLCPP_ERROR(get_logger(), e.what());
         }
     }
 
-    void GnssInsDriver::diagnostic_callback(diagnostic_updater::DiagnosticStatusWrapper& stat){
+    void GnssInsDriver::diagnostic_callback(diagnostic_updater::DiagnosticStatusWrapper &stat)
+    {
         converter_->is_delay_high(binary_parser_->get_unix_time_ns()) ? stat.summary(diagnostic_msgs::msg::DiagnosticStatus::ERROR, "HIGH_DELAY") : stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "OK");
         stat.add("INS_STATUS", Converter::is_ins_active(ins_pva_.ins_status) ? "ACTIVE" : "INACTIVE");
     }
 
-}  // namespace rbf_gnss_ins_driver
+} // namespace rbf_gnss_ins_driver
 
 // Register the node as a component
 #include "rclcpp_components/register_node_macro.hpp"
