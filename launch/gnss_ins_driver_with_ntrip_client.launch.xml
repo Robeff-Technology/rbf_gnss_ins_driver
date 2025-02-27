@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Interface -->
+  <include file="$(find-pkg-share rbf_gnss_ins_driver)/launch/gnss_ins_driver.launch.xml"/>
+
+  <!-- Socketcan -->
+  <include file="$(find-pkg-share rbf_ntrip_driver)/launch/rbf_ntrip_driver.launch.py"/>
+</launch>
