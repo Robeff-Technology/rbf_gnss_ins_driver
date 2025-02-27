@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="rbf_gnss_ins_config_path" default="$(find-pkg-share rbf_gnss_ins_driver)/config/gnss_ins.param.yaml"/>
+
+  <!-- GNSS-INS driver -->
+  <node pkg="rbf_gnss_ins_driver" exec="rbf_gnss_ins_component_driver" name="rbf_gnss_ins_driver" output="both">
+    <param from="$(var rbf_gnss_ins_config_path)"/>
+  </node>
+
+</launch>

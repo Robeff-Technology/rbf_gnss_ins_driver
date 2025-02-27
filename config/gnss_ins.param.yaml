@@ -1,0 +1,35 @@
+/**:
+  ros__parameters:
+
+    working_frequency: 200 # working frequency of the driver
+    
+    serial_config:
+      port: "/dev/ttyUSB0" # current port name of the device
+      baudrate: 460800 # current baudrate of the device
+
+    topic_config:
+      rtcm_topic: "/sensing/gnss/ntrip/rtcm" # RTCM topic name
+      imu_topic: "robins/ros/imu" # IMU topic name
+      nav_sat_fix_topic: "robins/ros/gps_nav_sat_fix" # NavSatFix topic name
+      twist_topic: "robins/ros/twist_with_covariance_stamped" # TwistWithCovarianceStamped topic name
+      temperature_topic: "robins/ros/temperature" # Temperature topic name
+
+    frame_config:
+      gnss_frame: "gnss_ins_link" # GNSS frame name
+      imu_frame: "imu_link" # GNSS frame name
+
+    time_config:
+      use_ros_time: false # use ROS time if true (not recommended)
+
+    odometry_config:
+      use_odometry: false # use odometry if true
+      odometry_topic: "robins/ros/odometry" # Odometry topic name
+      odometry_frame: "odom" # Odometry frame name
+
+    origin_config:
+      latitude: 0.0
+      longitude: 0.0
+      altitude: 0.0
+
+    altitude_config:
+      altitude_mode: 0 # 0: orthometric, 1: ellipsoid
