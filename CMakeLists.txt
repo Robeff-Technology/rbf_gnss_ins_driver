@@ -9,8 +9,10 @@ endif()
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # find dependencies
+find_package(autoware_cmake REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+autoware_package()
 
 # Add rbf_ntrip_driver.cpp as a rclcpp_component target
 ament_auto_add_library(rbf_gnss_ins_component SHARED

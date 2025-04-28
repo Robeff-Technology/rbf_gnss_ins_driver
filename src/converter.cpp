@@ -456,4 +456,22 @@ namespace rbf_gnss_ins_driver
     
         return msg;
     }
+
+    autoware_sensing_msgs::msg::GnssInsOrientationStamped Converter::ins_to_orientation_stamped_msg(const InsPvax& ins_pva, std::string frame_id) {
+        autoware_sensing_msgs::msg::GnssInsOrientationStamped orientation_msg;
+        orientation_msg.header = create_header(std::move(frame_id));
+        
+        tf2::Quaternion q;
+        q.setRPY(degree_to_radian(ins_pva.pitch), degree_to_radian(ins_pva.roll), degree_to_radian(ins_pva.azimuth));
+        orientation_msg.orientation.orientation.x = q.getX();
+        orientation_msg.orientation.orientation.y = q.getY();
+        orientation_msg.orientation.orientation.z = q.getZ();
+        orientation_msg.orientation.orientation.w = q.getW();
+
+        orientation_msg.orientation.rmse_rotation_x = ins_pva.std_dev_pitch * ins_pva.std_dev_pitch;
+        orientation_msg.orientation.rmse_rotation_y = ins_pva.std_dev_roll * ins_pva.std_dev_roll;
+        orientation_msg.orientation.rmse_rotation_z = ins_pva.std_dev_azimuth * ins_pva.std_dev_azimuth;
+
+        return orientation_msg;
+    }
 } // namespace rbf_gnss_ins_driver

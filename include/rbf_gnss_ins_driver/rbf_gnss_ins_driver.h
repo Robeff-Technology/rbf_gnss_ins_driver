@@ -28,6 +28,8 @@
 #include <rbf_gnss_ins_driver/msg/rtcm_status.hpp>
 #include <rbf_gnss_ins_driver/msg/gpnav.hpp>
 
+#include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
+
 namespace rbf_gnss_ins_driver
 {
     class GnssInsDriver : public rclcpp::Node
@@ -132,6 +134,9 @@ namespace rbf_gnss_ins_driver
         std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
         std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcast_;
         std::shared_ptr<LlToUtmTransform> ll_to_utm_transform_;
+
+        /*AUTOWARE ORIENTATION PUBLISHERS*/
+        rclcpp::Publisher<autoware_sensing_msgs::msg::GnssInsOrientationStamped>::SharedPtr pub_gnss_ins_orientation_;
 
         void init_publishers();
 

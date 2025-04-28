@@ -21,6 +21,7 @@
 #include <rbf_gnss_ins_driver/structs.h>
 #include <std_msgs/msg/header.hpp>
 
+#include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
 namespace rbf_gnss_ins_driver
 {
     class Converter
@@ -102,6 +103,9 @@ namespace rbf_gnss_ins_driver
 
         // Function to convert gnss navigation data to ROS message
         rbf_gnss_ins_driver::msg::Gpnav create_gpnavigation_msg(const std::string& sentence, const std::string& frame_id);
+
+        //Function to convert INSPVA to gnss_ins_orientation_stamped message
+        autoware_sensing_msgs::msg::GnssInsOrientationStamped ins_to_orientation_stamped_msg(const InsPvax& ins_pva, std::string frame_id);
     };
 
 } // namespace rbf_gnss_ins_driver

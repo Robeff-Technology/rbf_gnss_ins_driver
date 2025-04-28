@@ -102,6 +102,9 @@ namespace rbf_gnss_ins_driver
         pub_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(config_params_.topics_.twist_topic_, 10);
         pub_imu_ = this->create_publisher<sensor_msgs::msg::Imu>(config_params_.topics_.imu_topic_, 10);
 
+        /*AUTOWARE ORIENTATION MSGS PUBLISHERS*/
+        pub_gnss_ins_orientation_ = this->create_publisher<autoware_sensing_msgs::msg::GnssInsOrientationStamped>("/gnss_ins_orientation", 10);
+
         /*ODOM PUBLISHERS IF ENABLED*/
         if (config_params_.odometry_.use_odometry_)
         {
@@ -199,6 +202,9 @@ namespace rbf_gnss_ins_driver
 
                 auto twist_msg = converter_->ins_to_twist_msg(ins_pva_, raw_imux_, config_params_.frames_.gnss_frame_);
                 pub_twist_->publish(twist_msg);
+
+                auto orientation_msg = converter_->ins_to_orientation_stamped_msg(ins_pva_, config_params_.frames_.gnss_frame_);
+                pub_gnss_ins_orientation_->publish(orientation_msg);
             }
         }
     }
