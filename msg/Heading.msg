@@ -5,8 +5,9 @@ std_msgs/Header header
 # 1 INSUFFICIENT_OBS
 # 2 NO_CONVERGENCE
 # 3 COV_TRACE
-uint16 status
+uint32 sol_status
 
+uint32 pos_type
 
 #clockwise angle between True North and baseline vector from master antenna to the slave antenna
 #True north heading angle(0 to 360 degree)

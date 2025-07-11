@@ -68,6 +68,8 @@ namespace rbf_gnss_ins_driver
     {
         rbf_gnss_ins_driver::msg::Heading heading_msg;
         heading_msg.header = create_header(std::move(frame_id));
+        heading_msg.sol_status = heading.sol_status;
+        heading_msg.pos_type = heading.pos_type;
         heading_msg.heading = heading.heading;
         heading_msg.std_dev_heading = heading.std_dev_heading;
         heading_msg.pitch = heading.pitch;

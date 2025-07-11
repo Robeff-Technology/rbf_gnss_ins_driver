@@ -82,25 +82,26 @@ namespace rbf_gnss_ins_driver
     void GnssInsDriver::init_publishers()
     {
         /*CUSTOM MSGS PUBLISHERS*/
-        pub_ins_ = this->create_publisher<rbf_gnss_ins_driver::msg::Ins>("/robins/raw/ins", 10);
-        pub_heading_ = this->create_publisher<rbf_gnss_ins_driver::msg::Heading>("/robins/raw/heading", 10);
-        pub_ecef_ = this->create_publisher<rbf_gnss_ins_driver::msg::ECEF>("/robins/raw/ecef", 10);
-        pub_imu_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::ImuStatus>("/robins/status/imu_status", 10);
-        pub_gnss_vel_ = this->create_publisher<rbf_gnss_ins_driver::msg::GnssVel>("/robins/raw/gnss_vel", 10);
-        pub_gnss_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::GnssStatus>("/robins/status/gnss_status", 10);
-        pub_rtcm_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::RTCMStatus>("/robins/status/rtcm_status", 10);
-        pub_gpnavigation_ = this->create_publisher<rbf_gnss_ins_driver::msg::Gpnav>("/robins/raw/gpnav", 10);
+        auto qos = rclcpp::SensorDataQoS();
+        pub_ins_ = this->create_publisher<rbf_gnss_ins_driver::msg::Ins>("/robins/raw/ins", qos);
+        pub_heading_ = this->create_publisher<rbf_gnss_ins_driver::msg::Heading>("/robins/raw/heading", qos);
+        pub_ecef_ = this->create_publisher<rbf_gnss_ins_driver::msg::ECEF>("/robins/raw/ecef", qos);
+        pub_imu_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::ImuStatus>("/robins/status/imu_status", qos);
+        pub_gnss_vel_ = this->create_publisher<rbf_gnss_ins_driver::msg::GnssVel>("/robins/raw/gnss_vel", qos);
+        pub_gnss_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::GnssStatus>("/robins/status/gnss_status", qos);
+        pub_rtcm_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::RTCMStatus>("/robins/status/rtcm_status", qos);
+        pub_gpnavigation_ = this->create_publisher<rbf_gnss_ins_driver::msg::Gpnav>("/robins/raw/gpnav", qos);
 
         /*STD MSGS without INS*/
-        pub_imu_raw_ = this->create_publisher<sensor_msgs::msg::Imu>("/robins/raw/imu", 10);
-        pub_nav_sat_fix_raw_ = this->create_publisher<sensor_msgs::msg::NavSatFix>("/robins/raw/nav_sat_fix", 10);
-        pub_temperature_ = this->create_publisher<sensor_msgs::msg::Temperature>("/robins/raw/temperature", 10);
-        pub_ecef_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>("/robins/raw/ecef_twist", 10);
+        pub_imu_raw_ = this->create_publisher<sensor_msgs::msg::Imu>("/robins/raw/imu", qos);
+        pub_nav_sat_fix_raw_ = this->create_publisher<sensor_msgs::msg::NavSatFix>("/robins/raw/nav_sat_fix", qos);
+        pub_temperature_ = this->create_publisher<sensor_msgs::msg::Temperature>("/robins/raw/temperature", qos);
+        pub_ecef_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>("/robins/raw/ecef_twist", qos);
 
         /*STANDARD MSGS PUBLISHERS*/
-        pub_nav_sat_fix_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(config_params_.topics_.nav_sat_fix_topic_, 10);
-        pub_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(config_params_.topics_.twist_topic_, 10);
-        pub_imu_ = this->create_publisher<sensor_msgs::msg::Imu>(config_params_.topics_.imu_topic_, 10);
+        pub_nav_sat_fix_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(config_params_.topics_.nav_sat_fix_topic_, qos);
+        pub_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(config_params_.topics_.twist_topic_, qos);
+        pub_imu_ = this->create_publisher<sensor_msgs::msg::Imu>(config_params_.topics_.imu_topic_, qos);
 
         /*AUTOWARE ORIENTATION MSGS PUBLISHERS*/
         pub_gnss_ins_orientation_ = this->create_publisher<autoware_sensing_msgs::msg::GnssInsOrientationStamped>("/gnss_ins_orientation", 10);
@@ -108,7 +109,7 @@ namespace rbf_gnss_ins_driver
         /*ODOM PUBLISHERS IF ENABLED*/
         if (config_params_.odometry_.use_odometry_)
         {
-            pub_odometry_ = this->create_publisher<nav_msgs::msg::Odometry>(config_params_.topics_.odometry_topic_, 10);
+            pub_odometry_ = this->create_publisher<nav_msgs::msg::Odometry>(config_params_.topics_.odometry_topic_, qos);
             tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
             tf_static_broadcast_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
             ll_to_utm_transform_ = std::make_shared<LlToUtmTransform>(config_params_.odometry_.lat_origin_, config_params_.odometry_.long_origin_, config_params_.odometry_.alt_origin_);
