@@ -310,6 +310,28 @@ namespace rbf_gnss_ins_driver
         return nav_sat_fix_msg;
     }
 
+    sensor_msgs::msg::NavSatFix Converter::gpnav_to_nav_sat_fix_msg(const rbf_gnss_ins_driver::msg::Gpnav &gpnav, std::string frame_id)
+    {
+        sensor_msgs::msg::NavSatFix nav_sat_fix_msg;
+        nav_sat_fix_msg.header = create_header(std::move(frame_id));
+        nav_sat_fix_msg.status.status = sensor_msgs::msg::NavSatStatus::STATUS_FIX;
+        nav_sat_fix_msg.status.service = sensor_msgs::msg::NavSatStatus::SERVICE_GPS;
+
+        nav_sat_fix_msg.latitude = gpnav.latitude;
+        nav_sat_fix_msg.longitude = gpnav.longitude;
+        if (altitude_mode_ == AltitudeMode::ORTHOMETRIC)
+        {
+            nav_sat_fix_msg.altitude = gpnav.altitude + gpnav.separation;
+        }
+        else
+        {
+            nav_sat_fix_msg.altitude = gpnav.altitude;
+        }
+        nav_sat_fix_msg.position_covariance = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+        nav_sat_fix_msg.position_covariance_type = sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
+        return nav_sat_fix_msg;
+    }
+
     sensor_msgs::msg::Imu Converter::ins_to_imu_msg(const InsPvax &ins_pva, const RawImux &raw_imux, std::string frame_id)
     {
         sensor_msgs::msg::Imu imu_msg;
@@ -342,6 +364,33 @@ namespace rbf_gnss_ins_driver
         return imu_msg;
     }
 
+    sensor_msgs::msg::Imu Converter::gpnav_to_imu_msg(const rbf_gnss_ins_driver::msg::Gpnav &gpnav, const ImuData &imu, std::string frame_id)
+    {
+        sensor_msgs::msg::Imu imu_msg;
+        imu_msg.header = create_header(std::move(frame_id));
+        tf2::Quaternion q;
+        /*
+         * in clap b7 roll-> y-axis pitch-> x axis azimuth->left-handed rotation around z-axis
+         * in ros imu msg roll-> x-axis pitch-> y axis azimuth->right-handed rotation around z-axis
+         */
+        q.setRPY(degree_to_radian(gpnav.pitch), degree_to_radian(gpnav.roll), degree_to_radian(gpnav.heading));
+
+        imu_msg.orientation.w = q.getW();
+        imu_msg.orientation.x = q.getX();
+        imu_msg.orientation.y = q.getY();
+        imu_msg.orientation.z = q.getZ();
+        imu_msg.linear_acceleration.x = imu.lateral_acc;
+        imu_msg.linear_acceleration.y = imu.longitudinal_acc;
+        imu_msg.linear_acceleration.z = imu.vertical_acc;
+        imu_msg.angular_velocity.x = imu.pitch_rate;
+        imu_msg.angular_velocity.y = imu.roll_rate;
+        imu_msg.angular_velocity.z = imu.yaw_rate;
+        imu_msg.orientation_covariance = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+        imu_msg.linear_acceleration_covariance = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+        imu_msg.angular_velocity_covariance = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+        return imu_msg;
+    }
+
     nav_msgs::msg::Odometry Converter::convert_to_odometry_msg(const InsPvax &ins_pva, const RawImux &raw_imux, double x, double y, double z, std::string frame_id)
     {
         nav_msgs::msg::Odometry odometry_msg;
@@ -368,6 +417,38 @@ namespace rbf_gnss_ins_driver
         odometry_msg.twist.covariance[0 * 6 + 0] = ins_pva.std_dev_east_velocity * ins_pva.std_dev_east_velocity;
         odometry_msg.twist.covariance[1 * 6 + 1] = ins_pva.std_dev_north_velocity * ins_pva.std_dev_north_velocity;
         odometry_msg.twist.covariance[2 * 6 + 2] = ins_pva.std_dev_up_velocity * ins_pva.std_dev_up_velocity;
+        odometry_msg.twist.covariance[3 * 6 + 3] = 0.00;
+        odometry_msg.twist.covariance[4 * 6 + 4] = 0.00;
+        odometry_msg.twist.covariance[5 * 6 + 5] = 0.00;
+        return odometry_msg;
+    }
+
+    nav_msgs::msg::Odometry Converter::convert_to_odometry_msg(rbf_gnss_ins_driver::msg::Gpnav &gpnav, const ImuData &imu, double x, double y, double z, std::string frame_id)
+    {
+        nav_msgs::msg::Odometry odometry_msg;
+        odometry_msg.header = create_header(std::move(frame_id));
+        odometry_msg.child_frame_id = "base_link";
+        odometry_msg.pose.pose.position.x = x;
+        odometry_msg.pose.pose.position.y = y;
+        odometry_msg.pose.pose.position.z = z;
+        tf2::Quaternion q;
+        q.setRPY(degree_to_radian(gpnav.pitch), degree_to_radian(gpnav.roll), degree_to_radian(gpnav.heading));
+        odometry_msg.pose.pose.orientation.w = q.getW();
+        odometry_msg.pose.pose.orientation.x = q.getX();
+        odometry_msg.pose.pose.orientation.y = q.getY();
+        odometry_msg.pose.pose.orientation.z = q.getZ();
+
+        odometry_msg.twist.twist.linear.x = gpnav.ve;
+        odometry_msg.twist.twist.linear.y = gpnav.vn;
+        odometry_msg.twist.twist.linear.z = gpnav.vu;
+
+        odometry_msg.twist.twist.angular.x = imu.pitch_rate;
+        odometry_msg.twist.twist.angular.y = imu.roll_rate;
+        odometry_msg.twist.twist.angular.z = imu.yaw_rate;
+
+        odometry_msg.twist.covariance[0 * 6 + 0] = 0.00;
+        odometry_msg.twist.covariance[1 * 6 + 1] = 0.00;
+        odometry_msg.twist.covariance[2 * 6 + 2] = 0.00;
         odometry_msg.twist.covariance[3 * 6 + 3] = 0.00;
         odometry_msg.twist.covariance[4 * 6 + 4] = 0.00;
         odometry_msg.twist.covariance[5 * 6 + 5] = 0.00;
@@ -404,6 +485,19 @@ namespace rbf_gnss_ins_driver
         twist_msg.twist.covariance[0] = ins_pva.std_dev_east_velocity * ins_pva.std_dev_east_velocity;
         twist_msg.twist.covariance[7] = ins_pva.std_dev_north_velocity * ins_pva.std_dev_north_velocity;
         twist_msg.twist.covariance[14] = ins_pva.std_dev_up_velocity * ins_pva.std_dev_up_velocity;
+        return twist_msg;
+    }
+
+    geometry_msgs::msg::TwistWithCovarianceStamped Converter::gpnav_to_twist_msg(const rbf_gnss_ins_driver::msg::Gpnav &gpnav, const ImuData &imu_data, std::string frame_id)
+    {
+        geometry_msgs::msg::TwistWithCovarianceStamped twist_msg;
+        twist_msg.header = create_header(std::move(frame_id));
+        twist_msg.twist.twist.linear.x = gpnav.vn;
+        twist_msg.twist.twist.linear.y = gpnav.ve;
+        twist_msg.twist.twist.linear.z = gpnav.vu;
+        twist_msg.twist.twist.angular.x = imu_data.pitch_rate;
+        twist_msg.twist.twist.angular.y = imu_data.roll_rate;
+        twist_msg.twist.twist.angular.z = imu_data.yaw_rate;
         return twist_msg;
     }
 

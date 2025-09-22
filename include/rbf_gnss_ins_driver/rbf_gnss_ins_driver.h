@@ -102,6 +102,7 @@ namespace rbf_gnss_ins_driver
         UniHeading heading_;
         ECEF ecef_;
         RtcmStatus rtcm_status_;
+        rbf_gnss_ins_driver::msg::Gpnav gpnav_;
 
         /*CUSTOM PUBLISHERS*/
         rclcpp::Publisher<rbf_gnss_ins_driver::msg::Ins>::SharedPtr pub_ins_;

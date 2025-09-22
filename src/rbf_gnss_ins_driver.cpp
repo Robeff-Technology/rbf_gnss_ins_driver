@@ -206,14 +206,38 @@ namespace rbf_gnss_ins_driver
 
     void GnssInsDriver::nmea_callback(const std::string & nmea_msg)
     {
-        auto nmea_msg_ = converter_->create_gpnavigation_msg(nmea_msg, config_params_.frames_.gnss_frame_);
-        pub_gpnavigation_->publish(nmea_msg_);
+        gpnav_ = converter_->create_gpnavigation_msg(nmea_msg, config_params_.frames_.gnss_frame_);
+        pub_gpnavigation_->publish(gpnav_);
+        if (Converter::is_ins_active(gpnav_))
+        {
+            /*ODOM SECTION*/
+            if (config_params_.odometry_.use_odometry_)
+            {
+                double x, y, z;
+                ll_to_utm_transform_->transform(gpnav_.latitude, gpnav_.longitude, gpnav_.altitude, x, y, z);
+
+                auto odometry_msg = converter_->convert_to_odometry_msg(gpnav_, imu_data_, x, y, z, config_params_.frames_.odometry_frame_);
+                pub_odometry_->publish(odometry_msg);
+
+                auto transform = converter_->create_transform(odometry_msg.pose.pose, config_params_.frames_.odometry_frame_);
+                tf_broadcaster_->sendTransform(transform);
+            }
+
+            auto nav_sat_fix_msg = converter_->gpnav_to_nav_sat_fix_msg(gpnav_, config_params_.frames_.gnss_frame_);
+            pub_nav_sat_fix_->publish(nav_sat_fix_msg);
+
+            auto imu_msg = converter_->gpnav_to_imu_msg(gpnav_, imu_data_, config_params_.frames_.imu_frame_);
+            pub_imu_->publish(imu_msg);
+
+            auto twist_msg = converter_->gpnav_to_twist_msg(gpnav_, imu_data_, config_params_.frames_.gnss_frame_);
+            pub_twist_->publish(twist_msg);
+        }
     }
 
     void GnssInsDriver::rtcm_callback(const mavros_msgs::msg::RTCM::SharedPtr msg)
     {
         rtcm_status_.received_size_ += msg->data.size();
-        if(Converter::is_ins_active(ins_pva_.ins_status) != true)
+        if(Converter::is_ins_active(ins_pva_.ins_status) != true || Converter::is_ins_active(gpnav_) != true)
         {
             return;
         }

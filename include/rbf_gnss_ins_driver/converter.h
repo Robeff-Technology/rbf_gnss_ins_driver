@@ -53,6 +53,7 @@ namespace rbf_gnss_ins_driver
         void set_timestamp(int64_t timestamp) { timestamp_ = timestamp; }
 
         static bool is_ins_active(uint32_t ins_status) { return ins_status > 1; };
+        static bool is_ins_active(const rbf_gnss_ins_driver::msg::Gpnav &gpnav) { return gpnav.status1 == 6; };
         // Function to convert raw imu data to imu status message
         rbf_gnss_ins_driver::msg::ImuStatus raw_imu_to_imu_status(const RawImux &raw_imux, std::string frame_id);
 
@@ -88,17 +89,21 @@ namespace rbf_gnss_ins_driver
 
         // Function to convert ins data to NavSatFix ROS message
         sensor_msgs::msg::NavSatFix ins_to_nav_sat_fix_msg(const InsPvax &ins_pva, std::string frame_id);
+        sensor_msgs::msg::NavSatFix gpnav_to_nav_sat_fix_msg(const rbf_gnss_ins_driver::msg::Gpnav &gpnav, std::string frame_id);
 
         // Function to convert ins data to IMU ROS message
         sensor_msgs::msg::Imu ins_to_imu_msg(const InsPvax &ins_pva, const RawImux &raw_imux, std::string frame_id);
+        sensor_msgs::msg::Imu gpnav_to_imu_msg(const rbf_gnss_ins_driver::msg::Gpnav &gpnav, const ImuData &imu, std::string frame_id);
 
         // Function to convert ins and imu data to Odometry ROS message
         nav_msgs::msg::Odometry convert_to_odometry_msg(const InsPvax &ins_pva, const RawImux &raw_imux, double x, double y, double z, std::string frame_id);
+        nav_msgs::msg::Odometry convert_to_odometry_msg(rbf_gnss_ins_driver::msg::Gpnav &gpnav, const ImuData &imu, double x, double y, double z, std::string frame_id);
 
         geometry_msgs::msg::TransformStamped create_transform(const geometry_msgs::msg::Pose &pose, std::string frame_id);
 
         // Function to convert INSPVA to twist message
         geometry_msgs::msg::TwistWithCovarianceStamped ins_to_twist_msg(const InsPvax &ins_pva, const RawImux &raw_imux, std::string frame_id);
+        geometry_msgs::msg::TwistWithCovarianceStamped gpnav_to_twist_msg(const rbf_gnss_ins_driver::msg::Gpnav &gpnav, const ImuData &imu_data, std::string frame_id);
 
         // Function to convert gnss navigation data to ROS message
         rbf_gnss_ins_driver::msg::Gpnav create_gpnavigation_msg(const std::string& sentence, const std::string& frame_id);
