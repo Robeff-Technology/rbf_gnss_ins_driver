@@ -1,74 +1,146 @@
-#ifndef RBF_GNSS_INS_DRIVER_BINARY_PARSER_H
-#define RBF_GNSS_INS_DRIVER_BINARY_PARSER_H
+#ifndef RBF_GNSS_INS_DRIVER__GNSS_STREAM_PARSER_HPP_
+#define RBF_GNSS_INS_DRIVER__GNSS_STREAM_PARSER_HPP_
 
+#include <rbf_gnss_ins_driver/structs.h>
+
+#include <array>
 #include <cstdint>
 #include <functional>
-#include <rbf_gnss_ins_driver/structs.h>
 #include <string>
-#include <vector>
 
-namespace rbf_gnss_ins_driver {
-class GnssStreamParser {
+namespace rbf_gnss_ins_driver
+{
+
+/**
+ * @brief Streaming GNSS parser supporting Binary + NMEA protocols.
+ *
+ * This parser consumes raw byte streams and extracts:
+ *  - Proprietary binary GNSS/INS frames
+ *  - NMEA sentences ($GGA, $RMC, etc.)
+ *
+ * Designed as a production-grade FSM parser:
+ *  - No dynamic allocation
+ *  - Byte-wise processing
+ *  - Error counters & recovery
+ */
+class GnssStreamParser
+{
 public:
+  /**
+   * @brief Supported binary message identifiers.
+   */
   enum class MessageId : std::uint16_t {
-    kGNSSPOS_1 = 42,
-    kGNSSVEL_1 = 99,
-    kECEF = 241,
-    kHEADING = 971,
-    kGNSSPOS = 1429,
-    kGNSSVEL = 1430,
-    kRAWIMUX = 1461,
-    kINSPVAX = 1465,
-    kIMUDATA = 2264,
+    GNSSPOS_1 = 42,
+    GNSSVEL_1 = 99,
+    ECEF = 241,
+    HEADING = 971,
+    GNSSPOS = 1429,
+    GNSSVEL = 1430,
+    RAWIMUX = 1461,
+    INSPVAX = 1465,
+    IMUDATA = 2264,
   };
 
-  GnssStreamParser();
-  GnssStreamParser(std::function<void(const uint8_t *buffer,
-                                      GnssStreamParser::MessageId msg_id)>
-                       binary_callback,
-                   std::function<void(const std::string &)> nmea_callback) {
-    binary_callback_ = binary_callback;
-    nmea_callback_ = nmea_callback;
-  }
-  ~GnssStreamParser();
+  using BinaryCallback = std::function<void(const uint8_t * payload, MessageId msg_id)>;
 
-  // Function to get Unix time in nanoseconds
+  using NmeaCallback = std::function<void(const std::string & sentence)>;
+
+  /**
+   * @brief Runtime parser statistics for diagnostics.
+   */
+  struct ParserStats
+  {
+    uint64_t sync_errors{0};
+    uint64_t header_length_errors{0};
+    uint64_t payload_length_errors{0};
+    uint64_t crc_errors{0};
+    uint64_t messages_ok{0};
+    uint64_t buffer_overflows{0};
+  };
+
+  /**
+   * @brief Construct parser with optional callbacks.
+   */
+  GnssStreamParser(BinaryCallback binary_cb = nullptr, NmeaCallback nmea_cb = nullptr)
+  : binary_callback_(std::move(binary_cb)), nmea_callback_(std::move(nmea_cb))
+  {
+  }
+
+  ~GnssStreamParser() = default;
+
+  /**
+   * @brief Feed raw data into the parser.
+   *
+   * @param buffer Pointer to raw byte array
+   * @param size Number of bytes
+   */
+  void parse(const uint8_t * buffer, size_t size);
+  /**
+   * @brief Access parser statistics.
+   */
+  const ParserStats & stats() const noexcept { return stats_; }
+
   int64_t get_unix_time_ns();
 
-  // Function to handle new data
-  void parse(const uint8_t *buffer, size_t size);
-
 private:
-  enum class ParserMode {
-    UNKNOWN,
-    NMEA,   // Starts with '$'
-    BINARY, // Starts with 0xAA
+  // ============================================================================
+  // Protocol constants
+  // ============================================================================
+  static constexpr uint8_t SYNC1 = 0xAA;
+  static constexpr uint8_t SYNC2 = 0x44;
+  static constexpr uint8_t SYNC3 = 0x12;
+
+  static constexpr size_t MAX_HEADER_LEN = 32U;
+  static constexpr size_t MAX_PAYLOAD_LEN = 512U;
+  static constexpr size_t CRC_LEN = sizeof(uint32_t);
+  static constexpr size_t MAX_FRAME_LEN = MAX_HEADER_LEN + MAX_PAYLOAD_LEN + CRC_LEN;
+
+  // ============================================================================
+  // FSM
+  // ============================================================================
+  enum class ParserState : uint8_t {
+    WAIT_SYNC_1,
+    WAIT_SYNC_2,
+    WAIT_SYNC_3,
+    READ_HEADER_LENGTH,
+    READ_HEADER,
+    READ_PAYLOAD_AND_CRC
   };
 
-  Header header_;
+  ParserState state_{ParserState::WAIT_SYNC_1};
 
-  void handle_byte(uint8_t byte);
-  void check_binary_message(const uint8_t *buffer, size_t size);
+  /**
+   * @brief Reset parser state and internal buffers.
+   */
+  void reset();
 
-  // Parser mode switches based on lead byte ($ or 0xAA)
-  ParserMode mode_ = ParserMode::UNKNOWN;
+  // ============================================================================
+  // Buffers & State
+  // ============================================================================
+  std::array<uint8_t, MAX_FRAME_LEN> buffer_{};
+  size_t index_{0};
+  size_t expected_length_{0};
+  uint8_t header_length_{0};
 
-  // NMEA buffer
-  std::string nmea_buffer_;
-  bool nmea_started_ = false;
+  Header header_{};
+  ParserStats stats_{};
 
-  // Binary buffer
-  std::vector<uint8_t> binary_buffer_;
-  size_t binary_expected_length_ = 0;
-  bool binary_header_found_ = false;
-  
-
+  // ============================================================================
   // Callbacks
-  std::function<void(const std::string &)> nmea_callback_;
-  std::function<void(const uint8_t *, GnssStreamParser::MessageId)>
-      binary_callback_;
+  // ============================================================================
+  BinaryCallback binary_callback_;
+  NmeaCallback nmea_callback_;
+
+  // ============================================================================
+  // Internal helpers
+  // ============================================================================
+  void handle_byte(uint8_t byte);
+  void handle_complete_frame();
+
+  // NMEA handling helpers (optional extension)
+  void handle_nmea_byte(uint8_t byte);
 };
 
-} // namespace rbf_gnss_ins_driver
+}  // namespace rbf_gnss_ins_driver
 
-#endif // RBF_GNSS_INS_DRIVER_BINARY_PARSER_H
+#endif  // RBF_GNSS_INS_DRIVER__GNSS_STREAM_PARSER_HPP_

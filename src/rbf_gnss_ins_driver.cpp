@@ -82,31 +82,30 @@ namespace rbf_gnss_ins_driver
     void GnssInsDriver::init_publishers()
     {
         /*CUSTOM MSGS PUBLISHERS*/
-        auto qos = rclcpp::SensorDataQoS();
-        pub_ins_ = this->create_publisher<rbf_gnss_ins_driver::msg::Ins>("/robins/raw/ins", qos);
-        pub_heading_ = this->create_publisher<rbf_gnss_ins_driver::msg::Heading>("/robins/raw/heading", qos);
-        pub_ecef_ = this->create_publisher<rbf_gnss_ins_driver::msg::ECEF>("/robins/raw/ecef", qos);
-        pub_imu_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::ImuStatus>("/robins/status/imu_status", qos);
-        pub_gnss_vel_ = this->create_publisher<rbf_gnss_ins_driver::msg::GnssVel>("/robins/raw/gnss_vel", qos);
-        pub_gnss_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::GnssStatus>("/robins/status/gnss_status", qos);
-        pub_rtcm_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::RTCMStatus>("/robins/status/rtcm_status", qos);
-        pub_gpnavigation_ = this->create_publisher<rbf_gnss_ins_driver::msg::Gpnav>("/robins/raw/gpnav", qos);
+        pub_ins_ = this->create_publisher<rbf_gnss_ins_driver::msg::Ins>("/robins/raw/ins", 10);
+        pub_heading_ = this->create_publisher<rbf_gnss_ins_driver::msg::Heading>("/robins/raw/heading", 10);
+        pub_ecef_ = this->create_publisher<rbf_gnss_ins_driver::msg::ECEF>("/robins/raw/ecef", 10);
+        pub_imu_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::ImuStatus>("/robins/status/imu_status", 10);
+        pub_gnss_vel_ = this->create_publisher<rbf_gnss_ins_driver::msg::GnssVel>("/robins/raw/gnss_vel", 10);
+        pub_gnss_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::GnssStatus>("/robins/status/gnss_status", 10);
+        pub_rtcm_status_ = this->create_publisher<rbf_gnss_ins_driver::msg::RTCMStatus>("/robins/status/rtcm_status", 10);
+        pub_gpnavigation_ = this->create_publisher<rbf_gnss_ins_driver::msg::Gpnav>("/robins/raw/gpnav", 10);
 
         /*STD MSGS without INS*/
-        pub_imu_raw_ = this->create_publisher<sensor_msgs::msg::Imu>("/robins/raw/imu", qos);
-        pub_nav_sat_fix_raw_ = this->create_publisher<sensor_msgs::msg::NavSatFix>("/robins/raw/nav_sat_fix", qos);
-        pub_temperature_ = this->create_publisher<sensor_msgs::msg::Temperature>("/robins/raw/temperature", qos);
-        pub_ecef_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>("/robins/raw/ecef_twist", qos);
+        pub_imu_raw_ = this->create_publisher<sensor_msgs::msg::Imu>("/robins/raw/imu", 10);
+        pub_nav_sat_fix_raw_ = this->create_publisher<sensor_msgs::msg::NavSatFix>("/robins/raw/nav_sat_fix", 10);
+        pub_temperature_ = this->create_publisher<sensor_msgs::msg::Temperature>("/robins/raw/temperature", 10);
+        pub_ecef_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>("/robins/raw/ecef_twist", 10);
 
         /*STANDARD MSGS PUBLISHERS*/
-        pub_nav_sat_fix_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(config_params_.topics_.nav_sat_fix_topic_, qos);
-        pub_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(config_params_.topics_.twist_topic_, qos);
-        pub_imu_ = this->create_publisher<sensor_msgs::msg::Imu>(config_params_.topics_.imu_topic_, qos);
+        pub_nav_sat_fix_ = this->create_publisher<sensor_msgs::msg::NavSatFix>(config_params_.topics_.nav_sat_fix_topic_, 10);
+        pub_twist_ = this->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(config_params_.topics_.twist_topic_, 10);
+        pub_imu_ = this->create_publisher<sensor_msgs::msg::Imu>(config_params_.topics_.imu_topic_, 10);
 
         /*ODOM PUBLISHERS IF ENABLED*/
         if (config_params_.odometry_.use_odometry_)
         {
-            pub_odometry_ = this->create_publisher<nav_msgs::msg::Odometry>(config_params_.topics_.odometry_topic_, qos);
+            pub_odometry_ = this->create_publisher<nav_msgs::msg::Odometry>(config_params_.topics_.odometry_topic_, 10);
             tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
             tf_static_broadcast_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
             ll_to_utm_transform_ = std::make_shared<LlToUtmTransform>(config_params_.odometry_.lat_origin_, config_params_.odometry_.long_origin_, config_params_.odometry_.alt_origin_);
@@ -122,7 +121,7 @@ namespace rbf_gnss_ins_driver
     void GnssInsDriver::binary_callback(const uint8_t *data, GnssStreamParser::MessageId id)
     {
         converter_->set_timestamp(gnss_parser_->get_unix_time_ns());
-        if (GnssStreamParser::MessageId::kECEF == id)
+        if (GnssStreamParser::MessageId::ECEF == id)
         {
             ecef_ = *reinterpret_cast<const ECEF *>(data);
             auto ecef_msg = converter_->ecef_to_msg(ecef_, config_params_.frames_.gnss_frame_);
@@ -131,7 +130,7 @@ namespace rbf_gnss_ins_driver
             auto ecef_twist_msg = converter_->ecef_to_twist_msg(ecef_, raw_imux_, config_params_.frames_.gnss_frame_);
             pub_ecef_twist_->publish(ecef_twist_msg);
         }
-        else if (GnssStreamParser::MessageId::kRAWIMUX == id)
+        else if (GnssStreamParser::MessageId::RAWIMUX == id)
         {
             raw_imux_ = *reinterpret_cast<const RawImux *>(data);
             auto imu_status_msg = converter_->raw_imu_to_imu_status(raw_imux_, config_params_.frames_.imu_frame_);
@@ -143,20 +142,20 @@ namespace rbf_gnss_ins_driver
             auto temperature_msg = converter_->raw_imu_to_temperature_msg(raw_imux_, config_params_.frames_.imu_frame_);
             pub_temperature_->publish(temperature_msg);
         }
-        else if(GnssStreamParser::MessageId::kIMUDATA == id) 
+        else if(GnssStreamParser::MessageId::IMUDATA == id) 
         {
             imu_data_ = *reinterpret_cast<const ImuData *>(data);
 
             auto imu_msg = converter_->imu_data_to_imu_msg(imu_data_, config_params_.frames_.imu_frame_);
             pub_imu_raw_->publish(imu_msg);
         }
-        else if (GnssStreamParser::MessageId::kHEADING == id)
+        else if (GnssStreamParser::MessageId::HEADING == id)
         {
             heading_ = *reinterpret_cast<const UniHeading *>(data);
             auto heading_msg = converter_->heading_to_msg(heading_, config_params_.frames_.gnss_frame_);
             pub_heading_->publish(heading_msg);
         }
-        else if (GnssStreamParser::MessageId::kGNSSPOS == id || GnssStreamParser::MessageId::kGNSSPOS_1 == id)
+        else if (GnssStreamParser::MessageId::GNSSPOS == id || GnssStreamParser::MessageId::GNSSPOS_1 == id)
         {
             gnss_pos_ = *reinterpret_cast<const BestGnssPos *>(data);
             auto gnss_status_msg = converter_->gnss_pos_to_gnss_status_msg(gnss_pos_, config_params_.frames_.gnss_frame_);
@@ -165,13 +164,13 @@ namespace rbf_gnss_ins_driver
             auto nav_sat_fix_msg = converter_->gnss_pos_to_nav_sat_fix_msg(gnss_pos_, config_params_.frames_.gnss_frame_);
             pub_nav_sat_fix_raw_->publish(nav_sat_fix_msg);
         }
-        else if (GnssStreamParser::MessageId::kGNSSVEL == id || GnssStreamParser::MessageId::kGNSSVEL_1 == id)
+        else if (GnssStreamParser::MessageId::GNSSVEL == id || GnssStreamParser::MessageId::GNSSVEL_1 == id)
         {
             gnss_vel_ = *reinterpret_cast<const BestGnssVel *>(data);
             auto gnss_vel_msg = converter_->gnss_vel_to_msg(gnss_vel_, config_params_.frames_.gnss_frame_);
             pub_gnss_vel_->publish(gnss_vel_msg);
         }
-        else if (GnssStreamParser::MessageId::kINSPVAX == id)
+        else if (GnssStreamParser::MessageId::INSPVAX == id)
         {
             ins_pva_ = *reinterpret_cast<const InsPvax *>(data);
             auto ins_msg = converter_->ins_to_msg(ins_pva_, config_params_.frames_.gnss_frame_);
@@ -206,38 +205,14 @@ namespace rbf_gnss_ins_driver
 
     void GnssInsDriver::nmea_callback(const std::string & nmea_msg)
     {
-        gpnav_ = converter_->create_gpnavigation_msg(nmea_msg, config_params_.frames_.gnss_frame_);
-        pub_gpnavigation_->publish(gpnav_);
-        if (Converter::is_ins_active(gpnav_))
-        {
-            /*ODOM SECTION*/
-            if (config_params_.odometry_.use_odometry_)
-            {
-                double x, y, z;
-                ll_to_utm_transform_->transform(gpnav_.latitude, gpnav_.longitude, gpnav_.altitude, x, y, z);
-
-                auto odometry_msg = converter_->convert_to_odometry_msg(gpnav_, imu_data_, x, y, z, config_params_.frames_.odometry_frame_);
-                pub_odometry_->publish(odometry_msg);
-
-                auto transform = converter_->create_transform(odometry_msg.pose.pose, config_params_.frames_.odometry_frame_);
-                tf_broadcaster_->sendTransform(transform);
-            }
-
-            auto nav_sat_fix_msg = converter_->gpnav_to_nav_sat_fix_msg(gpnav_, config_params_.frames_.gnss_frame_);
-            pub_nav_sat_fix_->publish(nav_sat_fix_msg);
-
-            auto imu_msg = converter_->gpnav_to_imu_msg(gpnav_, imu_data_, config_params_.frames_.imu_frame_);
-            pub_imu_->publish(imu_msg);
-
-            auto twist_msg = converter_->gpnav_to_twist_msg(gpnav_, imu_data_, config_params_.frames_.gnss_frame_);
-            pub_twist_->publish(twist_msg);
-        }
+        auto nmea_msg_ = converter_->create_gpnavigation_msg(nmea_msg, config_params_.frames_.gnss_frame_);
+        pub_gpnavigation_->publish(nmea_msg_);
     }
 
     void GnssInsDriver::rtcm_callback(const mavros_msgs::msg::RTCM::SharedPtr msg)
     {
         rtcm_status_.received_size_ += msg->data.size();
-        if(Converter::is_ins_active(ins_pva_.ins_status) != true || Converter::is_ins_active(gpnav_) != true)
+        if(Converter::is_ins_active(ins_pva_.ins_status) != true)
         {
             return;
         }
