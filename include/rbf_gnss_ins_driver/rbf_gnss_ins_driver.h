@@ -5,7 +5,6 @@
 #include <rbf_gnss_ins_driver/msg/ecef.hpp>
 #include <rbf_gnss_ins_driver/msg/gnss_status.hpp>
 #include <rbf_gnss_ins_driver/msg/gnss_vel.hpp>
-#include <rbf_gnss_ins_driver/msg/gpnav.hpp>
 #include <rbf_gnss_ins_driver/msg/heading.hpp>
 #include <rbf_gnss_ins_driver/msg/imu_status.hpp>
 #include <rbf_gnss_ins_driver/msg/ins.hpp>
@@ -15,6 +14,7 @@
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <mavros_msgs/msg/rtcm.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <nmea_msgs/msg/sentence.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <sensor_msgs/msg/temperature.hpp>
@@ -100,7 +100,6 @@ private:
   UniHeading heading_;
   ECEF ecef_;
   RtcmStatus rtcm_status_;
-  rbf_gnss_ins_driver::msg::Gpnav gpnav_;
 
   /*CUSTOM PUBLISHERS*/
   rclcpp::Publisher<rbf_gnss_ins_driver::msg::Ins>::SharedPtr pub_ins_;
@@ -110,7 +109,7 @@ private:
   rclcpp::Publisher<rbf_gnss_ins_driver::msg::GnssVel>::SharedPtr pub_gnss_vel_;
   rclcpp::Publisher<rbf_gnss_ins_driver::msg::GnssStatus>::SharedPtr pub_gnss_status_;
   rclcpp::Publisher<rbf_gnss_ins_driver::msg::RTCMStatus>::SharedPtr pub_rtcm_status_;
-  rclcpp::Publisher<rbf_gnss_ins_driver::msg::Gpnav>::SharedPtr pub_gpnavigation_;
+  rclcpp::Publisher<nmea_msgs::msg::Sentence>::SharedPtr nmea_pub_;
 
   /*DIAGNOSTIC UPDATER*/
   std::shared_ptr<diagnostic_updater::Updater> diagnostic_updater_;
@@ -143,6 +142,10 @@ private:
   void timer_callback();
   void rtcm_callback(const mavros_msgs::msg::RTCM::SharedPtr msg);
   void diagnostic_callback(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
+  static constexpr int MAX_CONSECUTIVE_READ_ERRORS = 10;
+  int consecutive_read_errors_{0};
+  bool shutdown_triggered_{false};
 };
 }  // namespace rbf_gnss_ins_driver
 #endif  // RBF_GNSS_INS_DRIVER_H

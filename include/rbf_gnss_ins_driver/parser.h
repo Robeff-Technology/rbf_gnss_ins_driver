@@ -56,6 +56,8 @@ public:
     uint64_t crc_errors{0};
     uint64_t messages_ok{0};
     uint64_t buffer_overflows{0};
+    uint64_t nmea_overflows{0};
+    uint64_t nmea_checksum_errors{0};
   };
 
   /**
@@ -95,6 +97,8 @@ private:
   static constexpr size_t CRC_LEN = sizeof(uint32_t);
   static constexpr size_t MAX_FRAME_LEN = MAX_HEADER_LEN + MAX_PAYLOAD_LEN + CRC_LEN;
 
+  enum class StreamType { UNKNOWN, BINARY, NMEA };
+
   // ============================================================================
   // FSM
   // ============================================================================
@@ -107,12 +111,31 @@ private:
     READ_PAYLOAD_AND_CRC
   };
 
+  // ============================================================================
+  // NMEA parsing states
+  // ============================================================================
+
+  enum class NmeaState {
+    WAIT_DOLLAR,
+    READ_PREFIX_1,
+    READ_PREFIX_2,
+    READ_BODY,
+    READ_CHECKSUM_1,
+    READ_CHECKSUM_2,
+    WAIT_CR,
+    WAIT_LF
+  };
+
+  StreamType stream_type_{StreamType::UNKNOWN};
   ParserState state_{ParserState::WAIT_SYNC_1};
+  NmeaState nmea_state_{NmeaState::WAIT_DOLLAR};
 
   /**
    * @brief Reset parser state and internal buffers.
    */
-  void reset();
+  void binary_reset(bool reset_stream);
+  void nmea_reset(bool reset_stream);
+  uint8_t nmea_prefix_[2];
 
   // ============================================================================
   // Buffers & State
@@ -121,6 +144,10 @@ private:
   size_t index_{0};
   size_t expected_length_{0};
   uint8_t header_length_{0};
+
+  std::string nmea_buffer_;
+  uint8_t nmea_calc_crc_{0};
+  uint8_t nmea_recv_crc_{0};
 
   Header header_{};
   ParserStats stats_{};
@@ -135,10 +162,12 @@ private:
   // Internal helpers
   // ============================================================================
   void handle_byte(uint8_t byte);
-  void handle_complete_frame();
+  bool detect_stream_type_and_consume(uint8_t byte);
+  void handle_complete_binary_frame();
 
   // NMEA handling helpers (optional extension)
-  void handle_nmea_byte(uint8_t byte);
+  void nmea_parser(uint8_t byte);
+  void binary_parser(uint8_t byte);
 };
 
 }  // namespace rbf_gnss_ins_driver

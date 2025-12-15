@@ -1,25 +1,36 @@
 #include "rbf_gnss_ins_driver/serial_port.h"
-#include <cstring>
+
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
 
-SerialPortException::SerialPortException(const std::string &message)
-    : std::runtime_error(message) {}
+#include <cstring>
 
-SerialPort::SerialPort() : port_name_(nullptr), fd_(-1) {}
+SerialPortException::SerialPortException(const std::string & message) : std::runtime_error(message)
+{
+}
 
-SerialPort::SerialPort(const char *port_name)
-    : port_name_(port_name), fd_(-1) {}
+SerialPort::SerialPort() : port_name_(nullptr), fd_(-1)
+{
+}
 
-SerialPort::~SerialPort() { close(); }
+SerialPort::SerialPort(const char * port_name) : port_name_(port_name), fd_(-1)
+{
+}
 
-void SerialPort::set_port_name(const char *port_name) {
+SerialPort::~SerialPort()
+{
+  close();
+}
+
+void SerialPort::set_port_name(const char * port_name)
+{
   port_name_ = port_name;
 }
 
-void SerialPort::open() {
+void SerialPort::open()
+{
   if (!port_name_) {
     throw SerialPortException("port name not set.");
   }
@@ -30,8 +41,8 @@ void SerialPort::open() {
   }
 }
 
-void SerialPort::configure(unsigned int baud_rate, int data_bits, char parity,
-                           int stop_bits) {
+void SerialPort::configure(unsigned int baud_rate, int data_bits, char parity, int stop_bits)
+{
   struct termios tty;
   if (tcgetattr(fd_, &tty) != 0) {
     throw SerialPortException("error getting serial port attributes.");
@@ -40,33 +51,33 @@ void SerialPort::configure(unsigned int baud_rate, int data_bits, char parity,
   // Set baud rate
   speed_t speed;
   switch (baud_rate) {
-  case 9600:
-    speed = B9600;
-    break;
-  case 19200:
-    speed = B19200;
-    break;
-  case 38400:
-    speed = B38400;
-    break;
-  case 57600:
-    speed = B57600;
-    break;
-  case 115200:
-    speed = B115200;
-    break;
-  case 230400:
-    speed = B230400;
-    break;
-  case 460800:
-    speed = B460800;
-    break;
-  case 921600:
-    speed = B921600;
-    break;
-  default:
-    throw SerialPortException("Unsupported baud rate");
-    close();
+    case 9600:
+      speed = B9600;
+      break;
+    case 19200:
+      speed = B19200;
+      break;
+    case 38400:
+      speed = B38400;
+      break;
+    case 57600:
+      speed = B57600;
+      break;
+    case 115200:
+      speed = B115200;
+      break;
+    case 230400:
+      speed = B230400;
+      break;
+    case 460800:
+      speed = B460800;
+      break;
+    case 921600:
+      speed = B921600;
+      break;
+    default:
+      throw SerialPortException("Unsupported baud rate");
+      close();
   }
 
   cfsetospeed(&tty, speed);
@@ -75,60 +86,60 @@ void SerialPort::configure(unsigned int baud_rate, int data_bits, char parity,
   // Set control modes
   tty.c_cflag &= ~CSIZE;
   switch (data_bits) {
-  case 5:
-    tty.c_cflag |= CS5;
-    break;
-  case 6:
-    tty.c_cflag |= CS6;
-    break;
-  case 7:
-    tty.c_cflag |= CS7;
-    break;
-  case 8:
-    tty.c_cflag |= CS8;
-    break;
-  default:
-    throw SerialPortException("unsupported data bit size.");
+    case 5:
+      tty.c_cflag |= CS5;
+      break;
+    case 6:
+      tty.c_cflag |= CS6;
+      break;
+    case 7:
+      tty.c_cflag |= CS7;
+      break;
+    case 8:
+      tty.c_cflag |= CS8;
+      break;
+    default:
+      throw SerialPortException("unsupported data bit size.");
   }
 
   if (parity == 'N') {
-    tty.c_cflag &= ~PARENB; // No parity
+    tty.c_cflag &= ~PARENB;  // No parity
   } else if (parity == 'E') {
-    tty.c_cflag |= PARENB;  // Enable parity
-    tty.c_cflag &= ~PARODD; // Even parity
+    tty.c_cflag |= PARENB;   // Enable parity
+    tty.c_cflag &= ~PARODD;  // Even parity
   } else if (parity == 'O') {
-    tty.c_cflag |= PARENB; // Enable parity
-    tty.c_cflag |= PARODD; // Odd parity
+    tty.c_cflag |= PARENB;  // Enable parity
+    tty.c_cflag |= PARODD;  // Odd parity
   } else {
     throw SerialPortException("unsupported parity setting.");
   }
 
   switch (stop_bits) {
-  case 1:
-    tty.c_cflag &= ~CSTOPB;
-    break; // 1 stop bit
-  case 2:
-    tty.c_cflag |= CSTOPB;
-    break; // 2 stop bits
-  default:
-    throw SerialPortException("unsupported stop bit size.");
+    case 1:
+      tty.c_cflag &= ~CSTOPB;
+      break;  // 1 stop bit
+    case 2:
+      tty.c_cflag |= CSTOPB;
+      break;  // 2 stop bits
+    default:
+      throw SerialPortException("unsupported stop bit size.");
   }
 
-  tty.c_cflag &= ~CRTSCTS;       // Disable RTS/CTS hardware flow control
-  tty.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines
+  tty.c_cflag &= ~CRTSCTS;        // Disable RTS/CTS hardware flow control
+  tty.c_cflag |= CREAD | CLOCAL;  // Turn on READ & ignore ctrl lines
 
   // Set input modes
   tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG);
-  tty.c_iflag &= ~(IXON | IXOFF | IXANY | IGNBRK | BRKINT | PARMRK | ISTRIP |
-                   INLCR | IGNCR | ICRNL);
+  tty.c_iflag &=
+    ~(IXON | IXOFF | IXANY | IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);
 
   // Set output modes
   tty.c_oflag &= ~OPOST;
   tty.c_oflag &= ~ONLCR;
 
   // Set timeout
-  tty.c_cc[VTIME] = 0; // Wait for up to 1s (10 deciseconds), returning as soon
-                       // as any data is received.
+  tty.c_cc[VTIME] = 0;  // Wait for up to 1s (10 deciseconds), returning as soon
+                        // as any data is received.
   tty.c_cc[VMIN] = 1;
 
   // Apply settings
@@ -137,21 +148,21 @@ void SerialPort::configure(unsigned int baud_rate, int data_bits, char parity,
   }
 }
 
-void SerialPort::write(const char *data, int length) {
+void SerialPort::write(const char * data, int length)
+{
   int total_written = 0;
   while (total_written < length) {
-    ssize_t written =
-        ::write(fd_, data + total_written, length - total_written);
+    ssize_t written = ::write(fd_, data + total_written, length - total_written);
     if (written < 0) {
-      if (errno == EINTR)
-        continue; // Interrupted by a signal, try again
+      if (errno == EINTR) continue;  // Interrupted by a signal, try again
       throw SerialPortException("error writing to serial port.");
     }
     total_written += written;
   }
 }
 
-int SerialPort::read(char *buffer, int buffer_size) {
+int SerialPort::read(char * buffer, int buffer_size)
+{
   int bytes_available;
   if (ioctl(fd_, FIONREAD, &bytes_available) < 0) {
     throw SerialPortException("error checking bytes available to read.");
@@ -160,13 +171,14 @@ int SerialPort::read(char *buffer, int buffer_size) {
     if (bytes_read < 0) {
       throw SerialPortException("error reading from serial port.");
     }
-    return bytes_read; // <-- düzeltme burada
+    return bytes_read;  // <-- düzeltme burada
   }
 
   return 0;
 }
 
-void SerialPort::close() {
+void SerialPort::close()
+{
   if (fd_ != -1) {
     ::close(fd_);
     fd_ = -1;

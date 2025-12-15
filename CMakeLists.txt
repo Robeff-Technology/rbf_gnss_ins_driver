@@ -42,7 +42,6 @@ set(msg_files
         "msg/Ins.msg"
         "msg/ECEF.msg"
         "msg/RTCMStatus.msg"
-        "msg/Gpnav.msg"
 )
 
 # Generate ROS 2 interfaces
