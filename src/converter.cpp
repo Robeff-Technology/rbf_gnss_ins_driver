@@ -307,14 +307,9 @@ sensor_msgs::msg::Imu Converter::ins_to_imu_msg(
   sensor_msgs::msg::Imu imu_msg;
   imu_msg.header = create_header(std::move(frame_id));
   tf2::Quaternion q;
-  /*
-   * in clap b7 roll-> y-axis pitch-> x axis azimuth->left-handed rotation
-   * around z-axis in ros imu msg roll-> x-axis pitch-> y axis
-   * azimuth->right-handed rotation around z-axis
-   */
   q.setRPY(
-    degree_to_radian(ins_pva.pitch), degree_to_radian(ins_pva.roll),
-    degree_to_radian(-ins_pva.azimuth));
+    degree_to_radian(ins_pva.roll), degree_to_radian(ins_pva.pitch),
+    degree_to_radian(ins_pva.azimuth));
 
   imu_msg.orientation.w = q.getW();
   imu_msg.orientation.x = q.getX();
@@ -349,8 +344,8 @@ nav_msgs::msg::Odometry Converter::convert_to_odometry_msg(
   odometry_msg.pose.pose.position.z = z;
   tf2::Quaternion q;
   q.setRPY(
-    degree_to_radian(ins_pva.pitch), degree_to_radian(ins_pva.roll),
-    degree_to_radian(-ins_pva.azimuth));
+    degree_to_radian(ins_pva.roll), degree_to_radian(ins_pva.pitch),
+    degree_to_radian(ins_pva.azimuth));
   odometry_msg.pose.pose.orientation.w = q.getW();
   odometry_msg.pose.pose.orientation.x = q.getX();
   odometry_msg.pose.pose.orientation.y = q.getY();
